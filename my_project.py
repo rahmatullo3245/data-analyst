@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import hashlib
 import sqlite3
 import bcrypt
 import plotly.express as px
@@ -30,7 +29,7 @@ def check_password(stored_hash, password):
 # User sign-up function
 def sign_up(username, password):
     cursor.execute('''
-    SELECT * FROM users WHERE username = ?
+    SELECT * FROM users WHERE username = ? 
     ''', (username,))
     if cursor.fetchone():
         return False  # User already exists, cannot sign up
@@ -55,10 +54,10 @@ def login(username, password):
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
-# Login and Sign-Up form
+# Login and Sign-Up form (only shown if user is not logged in)
 if not st.session_state.logged_in:
     option = st.radio("Select Action", ["Login", "Sign Up"])
-    
+
     if option == "Login":
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
@@ -67,7 +66,8 @@ if not st.session_state.logged_in:
             if login(username, password):
                 st.session_state.logged_in = True
                 st.session_state.username = username
-                st.success("Login successful!")
+                # Do not show success message
+                st.rerun()  # This reruns the app and removes the form
             else:
                 st.error("Invalid username or password")
     
@@ -79,7 +79,8 @@ if not st.session_state.logged_in:
             if sign_up(username, password):
                 st.session_state.logged_in = True
                 st.session_state.username = username
-                st.success("Sign-up successful! You are now logged in.")
+                # Do not show success message
+                st.rerun()  # This reruns the app and removes the form
             else:
                 st.error("Username already exists!")
 
@@ -90,7 +91,7 @@ if st.session_state.logged_in:
     if st.button("Log Out"):
         st.session_state.logged_in = False
         st.session_state.username = None
-        st.success("Logged out successfully!")
+        st.rerun()  # This reruns the app and removes the form
 
     # TechShop section
     st.title("TechShop")
@@ -102,7 +103,7 @@ if st.session_state.logged_in:
     # Reading the CSV file containing laptop data
     df = pd.read_csv('laptop_price.csv', sep=',')
     st.write(f"The available price range is from {df['Price (Euro)'].min()} to {df['Price (Euro)'].max()} Euro.")
-    
+
     if st.checkbox("Additional Statistics"):
         st.table(df.describe())
 
@@ -112,6 +113,8 @@ if st.session_state.logged_in:
     # Sidebar: Brand selection
     st.sidebar.title("Brands:")
     selected_brand = st.sidebar.selectbox("Select a Brand", df["Company"].unique())
+
+    # Filter the dataframe for selected columns
     d1 = df[['Company', 'CPU_Type', 'RAM (GB)', 'Memory', 'Price (Euro)']]
     filtered_df = d1[d1["Company"] == selected_brand]
     st.dataframe(filtered_df, hide_index=True)
@@ -119,17 +122,30 @@ if st.session_state.logged_in:
     # Add 3 line breaks for extra space
     st.markdown("<br><br><br>", unsafe_allow_html=True)
 
-    # Sidebar: Price filter
+    # Sidebar: Price filter with two-way (min and max) range
     st.sidebar.title("Price Range:")
-    price = st.sidebar.slider("Select Price Range:", df['Price (Euro)'].min(), df['Price (Euro)'].max())
-    d1 = df[['Company', 'CPU_Type', 'RAM (GB)', 'Memory', 'Price (Euro)']]
-    st.dataframe(d1[d1['Price (Euro)'] <= price], hide_index=True)
+    price_range = st.sidebar.slider(
+        "Select Price Range:",
+        min_value=df['Price (Euro)'].min(),
+        max_value=df['Price (Euro)'].max(),
+        value=(df['Price (Euro)'].min(), df['Price (Euro)'].max()),  # Default value (min, max)
+        step=1.0,  # Changed step to a float to match min and max types
+        format="€%d",  # Display values as Euro
+    )
 
-    # Animated Line Chart: Price sum by company
+    # Apply filter based on the selected price range
+    filtered_df = d1[(d1['Price (Euro)'] >= price_range[0]) & (d1['Price (Euro)'] <= price_range[1])]
+    st.dataframe(filtered_df, hide_index=True)
+
+    # Add 3 line breaks for extra space
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+
+    # Bar Chart: Total Prices by Company
     st.subheader("Total Prices by Company")
     grouped_data = df.groupby("Company")["Price (Euro)"].sum().sort_values(ascending=False).reset_index()
 
-    fig1 = px.line(
+    # Bar chart instead of line chart
+    fig1 = px.bar(
         grouped_data, 
         x="Company", 
         y="Price (Euro)", 
