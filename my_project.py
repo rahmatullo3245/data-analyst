@@ -115,7 +115,7 @@ if st.session_state.logged_in:
     selected_brand = st.sidebar.selectbox("Select a Brand", df["Company"].unique())
 
     # Filter the dataframe for selected columns
-    d1 = df[['Company', 'CPU_Type', 'RAM (GB)', 'Memory', 'Price (Euro)']]
+    d1 = df[['Company', 'CPU_Type', 'RAM (GB)', 'Memory', 'Inches', 'CPU_Frequency (GHz)', 'Price (Euro)']]
     filtered_df = d1[d1["Company"] == selected_brand]
     st.dataframe(filtered_df, hide_index=True)
 
@@ -188,6 +188,37 @@ if st.session_state.logged_in:
     top_brands = df["Company"].value_counts().head(10)
     fig5 = px.bar(top_brands, x=top_brands.index, y=top_brands.values, title="Top 10 Brands by Popularity", template="plotly_dark")
     st.plotly_chart(fig5)
+
+    ###corrilation matrix
+
+    # Add 3 line breaks for extra space
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+
+    # Correlation Matrix Section
+    st.subheader("Correlation Matrix: Understanding Relationships Between Features")
+
+    # Select only numeric columns for correlation matrix
+    numeric_df = d1.select_dtypes(include=['float64', 'int64'])
+
+    # Check if there are numeric columns to calculate correlation
+    if not numeric_df.empty:
+        # Calculate the correlation matrix
+        corr_matrix = numeric_df.corr()
+
+        # Display the correlation matrix as a heatmap using Plotly
+        fig_corr = px.imshow(
+            corr_matrix,
+            labels=dict(x="Features", y="Features", color="Correlation"),
+            x=corr_matrix.columns,
+            y=corr_matrix.columns,
+            color_continuous_scale="Viridis",  # You can change the color scale
+            title="Correlation Matrix of Laptop Features"
+        )
+
+        # Show the plot
+        st.plotly_chart(fig_corr)
+    else:
+        st.warning("No numeric columns found to calculate correlation.")
 
 else: 
     st.warning("Please log in or sign up to access the application.")
